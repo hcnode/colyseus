@@ -24,6 +24,7 @@ export type ServerOptions = IServerOptions & {
   presence?: any,
   engine?: any,
   ws?: any,
+  fixedPath?: string
 };
 
 export class Server {
@@ -36,6 +37,8 @@ export class Server {
   protected pingInterval: NodeJS.Timer;
 
   protected onShutdownCallback: () => void | Promise<any>;
+
+  protected options
 
   constructor(options: ServerOptions = {}) {
     this.presence = options.presence;
@@ -56,6 +59,7 @@ export class Server {
     if (options.server) {
       this.attach(options);
     }
+    this.options = options;
   }
 
   public attach(options: ServerOptions) {
@@ -115,7 +119,11 @@ export class Server {
   protected verifyClient = async (info, next) => {
     const req = info.req;
     const url = parseURL(req.url);
-    req.roomId = url.pathname.substr(1);
+    if(this.options.fixedPath){
+      req.roomId = url.pathname.replace(this.options.fixedPath, "").substr(1);
+    }else{
+      req.roomId = url.pathname.substr(1);
+    }
 
     const query = parseQueryString(url.query);
     req.colyseusid = query.colyseusid;
