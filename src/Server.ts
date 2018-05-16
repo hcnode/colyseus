@@ -1,45 +1,38 @@
-import * as http from 'http';
-import * as net from 'net';
-import * as msgpack from 'notepack.io';
-import * as parseURL from 'url-parse';
-import * as WebSocket from 'ws';
-import { ServerOptions as IServerOptions } from 'ws';
+import * as http from "http";
+import * as net from "net";
+import * as msgpack from "notepack.io";
+import * as parseURL from "url-parse";
+import * as WebSocket from "ws";
+import { ServerOptions as IServerOptions } from "ws";
 
-import { debugError } from './Debug';
-import { MatchMaker } from './MatchMaker';
-import { RegisteredHandler } from './matchmaker/RegisteredHandler';
-import { Presence } from './presence/Presence';
+import { debugError } from "./Debug";
+import { MatchMaker } from "./MatchMaker";
+import { RegisteredHandler } from "./matchmaker/RegisteredHandler";
+import { Presence } from "./presence/Presence";
 
-import { Client, generateId, isValidId } from './index';
-import { decode, Protocol, send } from './Protocol';
-import { Room, RoomConstructor } from './Room';
-import { parseQueryString, registerGracefulShutdown } from './Utils';
-
-const PING_INTERVAL = 20 * 1000; // 20 seconds for verifying ping.
-function noop() {/* tslint:disable:no-empty */}
-function heartbeat() { this.isAlive = true; }
+import { Client, generateId, isValidId } from "./index";
+import { decode, Protocol, send } from "./Protocol";
+import { Room, RoomConstructor } from "./Room";
+import { parseQueryString, registerGracefulShutdown } from "./Utils";
 
 export type ServerOptions = IServerOptions & {
-  verifyClient?: WebSocket.VerifyClientCallbackAsync
-  presence?: any,
-  engine?: any,
-  ws?: any,
-  fixedPath?: string
+  verifyClient?: WebSocket.VerifyClientCallbackAsync;
+  presence?: any;
+  engine?: any;
+  ws?: any;
+  fixedPath?: string;
 };
 
 export class Server {
   public matchMaker: MatchMaker;
 
-  protected server: WebSocket.Server;
+  protected server: any;
   protected httpServer: net.Server | http.Server;
 
   protected presence: Presence;
-  protected pingInterval: NodeJS.Timer;
 
   protected onShutdownCallback: () => void | Promise<any>;
-
-  protected options
-
+  protected options;
   constructor(options: ServerOptions = {}) {
     this.presence = options.presence;
     this.matchMaker = new MatchMaker(this.presence);
@@ -49,11 +42,12 @@ export class Server {
     // "presence" option is not used from now on
     delete options.presence;
 
-    registerGracefulShutdown((signal) => {
-      this.matchMaker.gracefullyShutdown().
-        then(() => this.shutdown()).
-        catch((err) => debugError(`error during shutdown: ${err}`)).
-        then(() => process.exit());
+    registerGracefulShutdown(signal => {
+      this.matchMaker
+        .gracefullyShutdown()
+        .then(() => this.onShutdownCallback())
+        .catch(err => debugError(`error during shutdown: ${err}`))
+        .then(() => process.exit());
     });
 
     if (options.server) {
@@ -70,10 +64,14 @@ export class Server {
       const customVerifyClient: WebSocket.VerifyClientCallbackAsync = options.verifyClient;
 
       options.verifyClient = (info, next) => {
-        if (!customVerifyClient) { return this.verifyClient(info, next); }
+        if (!customVerifyClient) {
+          return this.verifyClient(info, next);
+        }
 
         customVerifyClient(info, (verified, code, message) => {
-          if (!verified) { return next(verified, code, message); }
+          if (!verified) {
+            return next(verified, code, message);
+          }
 
           this.verifyClient(info, next);
         });
@@ -81,27 +79,11 @@ export class Server {
 
       this.server = new engine(options);
       this.httpServer = options.server;
-
     } else {
       this.server = options.ws;
     }
 
-    this.server.on('connection', this.onConnection);
-
-    // interval to detect broken connections
-    this.pingInterval = setInterval(() => {
-      this.server.clients.forEach((client: Client) => {
-        //
-        // if client hasn't responded after the interval, terminate its connection.
-        //
-        if (client.isAlive === false) {
-          return client.terminate();
-        }
-
-        client.isAlive = false;
-        client.ping(noop);
-      });
-    }, PING_INTERVAL);
+    this.server.on("connection", this.onConnection);
   }
 
   public listen(port: number, hostname?: string, backlog?: number, listeningListener?: Function) {
@@ -119,9 +101,9 @@ export class Server {
   protected verifyClient = async (info, next) => {
     const req = info.req;
     const url = parseURL(req.url);
-    if(this.options.fixedPath){
+    if (this.options.fixedPath) {
       req.roomId = url.pathname.replace(this.options.fixedPath, "").substr(1);
-    }else{
+    } else {
       req.roomId = url.pathname.substr(1);
     }
 
@@ -132,26 +114,28 @@ export class Server {
     req.options = query;
 
     if (req.roomId) {
-      const isLocked = await this.matchMaker.remoteRoomCall(req.roomId, 'locked');
+      const isLocked = await this.matchMaker.remoteRoomCall(req.roomId, "locked");
 
       if (isLocked) {
-        return next(false, Protocol.WS_TOO_MANY_CLIENTS, 'maxClients reached.');
+        return next(false, Protocol.WS_TOO_MANY_CLIENTS, "maxClients reached.");
       }
 
       // verify client from room scope.
-      this.matchMaker.remoteRoomCall(req.roomId, 'onAuth', [req.options]).
-        then((result) => {
-          if (!result) { return next(false); }
+      this.matchMaker
+        .remoteRoomCall(req.roomId, "onAuth", [req.options])
+        .then(result => {
+          if (!result) {
+            return next(false);
+          }
 
           req.auth = result;
           next(true);
-        }).
-        catch((e) => next(false));
-
+        })
+        .catch(e => next(false));
     } else {
       next(true);
     }
-  }
+  };
 
   protected onConnection = (client: Client, req?: http.IncomingMessage & any) => {
     // compatibility with ws / uws
@@ -159,7 +143,6 @@ export class Server {
 
     // set client id
     client.id = upgradeReq.colyseusid || generateId();
-    client.isAlive = true;
 
     // ensure client has its "colyseusid"
     if (!upgradeReq.colyseusid) {
@@ -171,21 +154,20 @@ export class Server {
     client.auth = upgradeReq.auth;
 
     // prevent server crashes if a single client had unexpected error
-    client.on('error', (err) => debugError(err.message + '\n' + err.stack));
-    client.on('pong', heartbeat);
+    client.on("error", err => {
+      debugError(err.message + "\n" + err.stack);
+    });
 
     const roomId = upgradeReq.roomId;
     if (roomId) {
-      this.matchMaker.connectToRoom(client, upgradeReq.roomId).
-        catch((e) => {
-          debugError(e.stack || e);
-          send(client, [Protocol.JOIN_ERROR, roomId, e && e.message]);
-        });
-
+      this.matchMaker.connectToRoom(client, upgradeReq.roomId).catch(e => {
+        debugError(e.stack || e);
+        send(client, [Protocol.JOIN_ERROR, roomId, e && e.message]);
+      });
     } else {
-      client.on('message',  this.onMessageMatchMaking.bind(this, client));
+      client.on("message", this.onMessageMatchMaking.bind(this, client));
     }
-  }
+  };
 
   protected onMessageMatchMaking(client: Client, message) {
     message = decode(message);
@@ -203,33 +185,28 @@ export class Server {
 
       if (!this.matchMaker.hasHandler(roomName) && !isValidId(roomName)) {
         send(client, [Protocol.JOIN_ERROR, roomName, `Error: no available handler for "${roomName}"`]);
-
       } else {
-        this.matchMaker.onJoinRoomRequest(client, roomName, joinOptions).
-          then((roomId: string) => send(client, [Protocol.JOIN_ROOM, roomId, joinOptions.requestId])).
-          catch((e) => {
+        this.matchMaker
+          .onJoinRoomRequest(client, roomName, joinOptions)
+          .then((roomId: string) => send(client, [Protocol.JOIN_ROOM, roomId, joinOptions.requestId]))
+          .catch(e => {
             debugError(e.stack || e);
             send(client, [Protocol.JOIN_ERROR, roomName, e && e.message]);
           });
       }
-
     } else if (message[0] === Protocol.ROOM_LIST) {
       const requestId = message[1];
       const roomName = message[2];
 
-      this.matchMaker.getAvailableRooms(roomName).
-        then((rooms) => send(client, [Protocol.ROOM_LIST, requestId, rooms])).
-        catch((e) => debugError(e.stack || e));
-
+      this.matchMaker
+        .getAvailableRooms(roomName)
+        .then(rooms => send(client, [Protocol.ROOM_LIST, requestId, rooms]))
+        .catch(e => debugError(e.stack || e));
+    } else if (message[0] === Protocol.PING) {
+      // keep-alive ping.
+      return;
     } else {
       debugError(`MatchMaking couldn\'t process message: ${message}`);
     }
-
   }
-
-  protected shutdown()  {
-    clearInterval(this.pingInterval);
-    return this.onShutdownCallback();
-  }
-
 }

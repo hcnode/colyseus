@@ -1,14 +1,14 @@
 /// <reference types="ws" />
 /// <reference types="node" />
-import * as http from 'http';
-import * as net from 'net';
-import * as WebSocket from 'ws';
-import { ServerOptions as IServerOptions } from 'ws';
-import { MatchMaker } from './MatchMaker';
-import { RegisteredHandler } from './matchmaker/RegisteredHandler';
-import { Presence } from './presence/Presence';
-import { Client } from './index';
-import { RoomConstructor } from './Room';
+import * as http from "http";
+import * as net from "net";
+import * as WebSocket from "ws";
+import { ServerOptions as IServerOptions } from "ws";
+import { MatchMaker } from "./MatchMaker";
+import { RegisteredHandler } from "./matchmaker/RegisteredHandler";
+import { Presence } from "./presence/Presence";
+import { Client } from "./index";
+import { RoomConstructor } from "./Room";
 export declare type ServerOptions = IServerOptions & {
     verifyClient?: WebSocket.VerifyClientCallbackAsync;
     presence?: any;
@@ -18,10 +18,9 @@ export declare type ServerOptions = IServerOptions & {
 };
 export declare class Server {
     matchMaker: MatchMaker;
-    protected server: WebSocket.Server;
+    protected server: any;
     protected httpServer: net.Server | http.Server;
     protected presence: Presence;
-    protected pingInterval: NodeJS.Timer;
     protected onShutdownCallback: () => void | Promise<any>;
     protected options: any;
     constructor(options?: ServerOptions);
@@ -32,5 +31,4 @@ export declare class Server {
     protected verifyClient: (info: any, next: any) => Promise<any>;
     protected onConnection: (client: Client, req?: any) => void;
     protected onMessageMatchMaking(client: Client, message: any): void;
-    protected shutdown(): void | Promise<any>;
 }
