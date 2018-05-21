@@ -18,9 +18,10 @@ export declare type ServerOptions = IServerOptions & {
 };
 export declare class Server {
     matchMaker: MatchMaker;
-    protected server: any;
+    protected server: WebSocket.Server;
     protected httpServer: net.Server | http.Server;
     protected presence: Presence;
+    protected pingInterval: NodeJS.Timer;
     protected onShutdownCallback: () => void | Promise<any>;
     protected options: any;
     constructor(options?: ServerOptions);
@@ -31,4 +32,5 @@ export declare class Server {
     protected verifyClient: (info: any, next: any) => Promise<any>;
     protected onConnection: (client: Client, req?: any) => void;
     protected onMessageMatchMaking(client: Client, message: any): void;
+    protected shutdown(): void | Promise<any>;
 }

@@ -9,7 +9,6 @@ export declare enum Protocol {
     ROOM_STATE_PATCH = 15,
     ROOM_LIST = 20,
     BAD_REQUEST = 50,
-    PING = 100,
     WS_SERVER_DISCONNECT = 4201,
     WS_TOO_MANY_CLIENTS = 4202,
 }

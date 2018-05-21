@@ -23,7 +23,7 @@ export declare type Client = WebSocket & {
     id: string;
     options: any;
     sessionId: string;
-    isAlive: boolean;
+    pingCount: number;
     remote?: boolean;
     auth?: any;
 };

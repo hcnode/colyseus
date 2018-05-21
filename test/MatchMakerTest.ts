@@ -5,10 +5,11 @@ import * as sinon from 'sinon';
 
 import { MatchMaker } from "../src/MatchMaker";
 import { RegisteredHandler } from './../src/matchmaker/RegisteredHandler';
-import { Room } from "../src/Room";
+import { Room, DEFAULT_SEAT_RESERVATION_TIME } from "../src/Room";
 
 import { generateId, Protocol, isValidId } from "../src";
 import { createDummyClient, DummyRoom, RoomVerifyClient, Client, RoomVerifyClientWithLock } from "./utils/mock";
+
 
 process.on('unhandledRejection', (reason, promise) => {
   console.log(reason, promise);
@@ -267,7 +268,7 @@ describe('MatchMaker', function() {
       dummyRoom.emit("dispose");
     });
 
-    it('should trigger "join" event', async (done) => {
+    it('should trigger "join" event', (done) => {
       let dummyRoom = matchMaker.getRoomById(matchMaker.create('room', {}));
 
       matchMaker.handlers["room"].on("join", (room, client) => {
@@ -277,8 +278,10 @@ describe('MatchMaker', function() {
       });
 
       let client = createDummyClient();
-      let room = matchMaker.getRoomById(await matchMaker.onJoinRoomRequest(client, 'room', {}));
-      (room as any)._onJoin(client, {});
+
+      matchMaker.onJoinRoomRequest(client, 'room', {}).then((roomId) => {
+        matchMaker.getRoomById(roomId)._onJoin(client, {});
+      })
     });
 
     it('should trigger "lock" event', (done) => {
@@ -305,7 +308,7 @@ describe('MatchMaker', function() {
       matchMaker.create('room', {});
     });
 
-    it('should trigger "leave" event', async (done) => {
+    it('should trigger "leave" event',  (done) => {
       let dummyRoom = matchMaker.getRoomById(matchMaker.create('room', {}));
 
       matchMaker.handlers["room"].on("leave", (room, client) => {
@@ -315,9 +318,62 @@ describe('MatchMaker', function() {
       });
 
       let client = createDummyClient();
-      let room = matchMaker.getRoomById(await matchMaker.onJoinRoomRequest(client, 'room', { clientId: client.id }));
-      room._onJoin(client);
-      room._onLeave(client);
+
+      matchMaker.onJoinRoomRequest(client, 'room', { clientId: client.id }).then((roomId) => {
+        let room = matchMaker.getRoomById(roomId);
+        room._onJoin(client);
+        room._onLeave(client);
+      });
+    });
+  });
+
+  describe("time between room creation and first connection", () => {
+    it('should remove the room reference after a timeout without connection', async () => {
+      const clock = sinon.useFakeTimers();
+
+      const roomId = await matchMaker.onJoinRoomRequest(createDummyClient(), 'room', {});
+      const dummyRoom = matchMaker.getRoomById(roomId);
+      assert.equal(dummyRoom.clients, 0);
+      assert(dummyRoom instanceof Room);
+
+      clock.tick(DEFAULT_SEAT_RESERVATION_TIME * 1000);
+      assert(matchMaker.getRoomById(roomId) === undefined);
+
+      clock.restore();
+    });
+
+    it('timer should be re-set if second client tries to join the room', async () => {
+      const clock = sinon.useFakeTimers();
+
+      const roomId = await matchMaker.onJoinRoomRequest(createDummyClient(), 'room', {});
+      const room = matchMaker.getRoomById(roomId);
+      clock.tick(DEFAULT_SEAT_RESERVATION_TIME * 1000 - 1);
+      assert(room instanceof Room);
+
+      await matchMaker.onJoinRoomRequest(createDummyClient(), 'room', {});
+      assert(matchMaker.getRoomById(roomId) instanceof Room);
+
+      clock.tick(DEFAULT_SEAT_RESERVATION_TIME * 1000);
+      assert(matchMaker.getRoomById(roomId) === undefined);
+
+      clock.restore();
+    });
+
+    it('room shouldn\'t be removed if a client has joined', async () => {
+      const clock = sinon.useFakeTimers();
+
+      const client = createDummyClient({});
+      const roomId = await matchMaker.onJoinRoomRequest(client, 'room', {});
+      const room = matchMaker.getRoomById(roomId);
+
+      clock.tick(DEFAULT_SEAT_RESERVATION_TIME * 1000 - 1);
+      assert(room instanceof Room);
+
+      await matchMaker.connectToRoom(client, roomId);
+      clock.tick(DEFAULT_SEAT_RESERVATION_TIME * 1000);
+      assert(matchMaker.getRoomById(roomId) instanceof Room);
+
+      clock.restore();
     });
   });
 

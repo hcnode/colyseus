@@ -5,6 +5,7 @@ import { EventEmitter } from 'events';
 import { Client } from './index';
 import { Presence } from './presence/Presence';
 import { RemoteClient } from './presence/RemoteClient';
+export declare const DEFAULT_SEAT_RESERVATION_TIME = 2;
 export declare type SimulationCallback = (deltaTime?: number) => void;
 export interface RoomConstructor<T = any> {
     new (presence?: Presence): Room<T>;
@@ -33,6 +34,13 @@ export declare abstract class Room<T = any> extends EventEmitter {
     protected remoteClients: {
         [sessionId: string]: RemoteClient;
     };
+    protected reservedSeats: Set<string>;
+    protected reservedSeatTimeouts: {
+        [sessionId: string]: NodeJS.Timer;
+    };
+    protected reconnectionResolvers: {
+        [sessionId: string]: (value?: Client | PromiseLike<Client>) => void;
+    };
     private _previousState;
     private _previousStateEncoded;
     private _simulationInterval;
@@ -40,6 +48,7 @@ export declare abstract class Room<T = any> extends EventEmitter {
     private _locked;
     private _lockedExplicitly;
     private _maxClientsReached;
+    private _autoDisposeTimeout;
     constructor(presence?: Presence);
     abstract onMessage(client: Client, data: any): void;
     onInit?(options: any): void;
@@ -49,7 +58,8 @@ export declare abstract class Room<T = any> extends EventEmitter {
     requestJoin(options: any, isNew?: boolean): number | boolean;
     onAuth(options: any): boolean | Promise<any>;
     readonly locked: boolean;
-    hasReachedMaxClients(): Promise<boolean>;
+    hasReachedMaxClients(): boolean;
+    hasReservedSeat(sessionId: string): boolean;
     setSimulationInterval(callback: SimulationCallback, delay?: number): void;
     setPatchRate(milliseconds: number): void;
     useTimeline(maxSnapshots?: number): void;
@@ -63,6 +73,9 @@ export declare abstract class Room<T = any> extends EventEmitter {
     disconnect(): Promise<any>;
     protected sendState(client: Client): void;
     protected broadcastPatch(): boolean;
+    protected allowReconnection(client: Client, seconds?: number): Promise<Client>;
+    protected _reserveSeat(client: Client, seconds?: number, allowReconnection?: boolean): void;
+    protected resetAutoDisposeTimeout(timeoutInSeconds: number): void;
     protected _disposeIfEmpty(): void;
     protected _dispose(): Promise<any>;
     private _emitOnClient(sessionId, event);

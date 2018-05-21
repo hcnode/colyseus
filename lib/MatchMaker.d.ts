@@ -24,16 +24,17 @@ export declare class MatchMaker {
      * to effectively join into the room created/joined by this method.
      */
     onJoinRoomRequest(client: Client, roomToJoin: string, clientOptions: ClientOptions): Promise<string>;
-    remoteRoomCall(roomId: string, method: string, args?: any[]): Promise<any>;
+    remoteRoomCall(roomId: string, method: string, args?: any[], rejectionTimeout?: number): Promise<any>;
     registerHandler(name: string, klass: RoomConstructor, options?: any): RegisteredHandler;
     hasHandler(name: string): boolean;
-    joinById(roomId: string, clientOptions: ClientOptions): Promise<string>;
+    joinById(roomId: string, clientOptions: ClientOptions, isReconnect: boolean): Promise<string>;
     getAvailableRoomByScore(roomName: string, clientOptions: ClientOptions): Promise<RoomWithScore[]>;
     create(roomName: string, clientOptions: ClientOptions): string;
     getAvailableRooms(roomName: string, roomMethodName?: string): Promise<RoomAvailable[]>;
     getAllRooms(roomName: string, roomMethodName?: string): Promise<RoomAvailable[]>;
     getRoomById(roomId: string): Room<any>;
     gracefullyShutdown(): Promise<any[]>;
+    protected cleanupStaleRooms(roomName: string): Promise<void>;
     protected getRoomsWithScore(roomName: string, clientOptions: ClientOptions): Promise<RoomWithScore[]>;
     protected createRoomReferences(room: Room, init?: boolean): boolean;
     protected clearRoomReferences(room: Room): void;
