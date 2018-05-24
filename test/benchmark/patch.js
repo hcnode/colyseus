@@ -105,14 +105,14 @@ suite.add('using plain + observe', function() {
 
 var obj4 = new ComplexState();
 var obj4state = JSON.parse(JSON.stringify(toJSON(obj4)))
-var observer2 = jsonpatch.observe(obj4state)
+var observerx = jsonpatch.observe(obj4state)
 suite.add('using complex + observe', function() {
   for (var i=0; i<4; i++) {
     obj4.objs[0].hp--;
     obj4.objs[2].hp--;
     obj4.teams[i].score++;
     Object.assign(obj4state, toJSON(obj4))
-    var diff = msgpack.encode( jsonpatch.generate(observer2) )
+    var diff = msgpack.encode( jsonpatch.generate(observerx) )
   }
 })
 
@@ -143,6 +143,19 @@ suite.add('using complex + fossildelta', function() {
     oldBinary5 = newBinary5
   }
 })
+
+var objx = new ComplexState();
+var stateData = objx.toJSON();
+var observerx = jsonpatch.observe(stateData);
+suite.add("using complex toJSON + observe", function() {
+  for (var i = 0; i < 4; i++) {
+    objx.objs[0].hp--;
+    objx.objs[2].hp--;
+    objx.teams[i].score++;
+    Object.assign(stateData, objx.toJSON());
+    var diff = msgpack.encode(jsonpatch.generate(observerx));
+  }
+});
 
 suite.on('cycle', function(event) {
   console.log(String(event.target));
