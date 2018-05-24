@@ -131,7 +131,8 @@ export class Server {
 
     delete query.colyseusid;
     req.options = query;
-
+    // i need clientId for onAith
+    req.options.clientId = req.colyseusid;
     if (req.roomId) {
       const isLocked = await this.matchMaker.remoteRoomCall(req.roomId, "locked");
 
