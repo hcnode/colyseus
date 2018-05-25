@@ -29,7 +29,7 @@ export declare class MatchMaker {
     hasHandler(name: string): boolean;
     joinById(roomId: string, clientOptions: ClientOptions, isReconnect: boolean): Promise<string>;
     getAvailableRoomByScore(roomName: string, clientOptions: ClientOptions): Promise<RoomWithScore[]>;
-    create(roomName: string, clientOptions: ClientOptions): string;
+    create(roomName: string, clientOptions: ClientOptions): Promise<string>;
     getAvailableRooms(roomName: string, roomMethodName?: string): Promise<RoomAvailable[]>;
     getAllRooms(roomName: string, roomMethodName?: string): Promise<RoomAvailable[]>;
     getRoomById(roomId: string): Room<any>;

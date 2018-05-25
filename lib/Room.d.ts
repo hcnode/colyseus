@@ -55,7 +55,7 @@ export declare abstract class Room<T = any> extends EventEmitter {
     onJoin?(client: Client, options?: any, auth?: any): void | Promise<any>;
     onLeave?(client: Client): void | Promise<any>;
     onDispose?(): void | Promise<any>;
-    requestJoin(options: any, isNew?: boolean): number | boolean;
+    requestJoin(options: any, isNew?: boolean): number | boolean | Promise<any>;
     onAuth(options: any): boolean | Promise<any>;
     readonly locked: boolean;
     hasReachedMaxClients(): boolean;

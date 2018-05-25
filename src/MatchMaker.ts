@@ -132,7 +132,7 @@ export class MatchMaker {
 
     // if couldn't join a room by its id, let's try to create a new one
     if (!roomId && hasHandler) {
-      roomId = this.create(roomToJoin, clientOptions);
+      roomId = await this.create(roomToJoin, clientOptions);
     }
 
     if (roomId) {
@@ -233,7 +233,7 @@ export class MatchMaker {
       sort((a, b) => b.score - a.score);
   }
 
-  public create(roomName: string, clientOptions: ClientOptions): string {
+  public async create(roomName: string, clientOptions: ClientOptions): Promise<string> {
     const registeredHandler = this.handlers[ roomName ];
     const room = new registeredHandler.klass();
 
@@ -247,7 +247,7 @@ export class MatchMaker {
     }
 
     // imediatelly ask client to join the room
-    if ( room.requestJoin(clientOptions, true) ) {
+    if ( (await room.requestJoin(clientOptions, true)) ) {
       debugMatchMaking('spawning \'%s\' on process %d', roomName, process.pid);
 
       room.on('lock', this.lockRoom.bind(this, roomName, room));
@@ -384,7 +384,7 @@ export class MatchMaker {
       } else {
         roomsWithScore.push({
           roomId,
-          score: localRoom.requestJoin(clientOptions, false) as number,
+          score: (await localRoom.requestJoin(clientOptions, false)) as number,
         });
       }
 
